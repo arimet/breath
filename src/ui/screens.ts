@@ -53,18 +53,56 @@ function onAct(el: HTMLElement, handlers: Record<string, (target: HTMLElement) =
 const stepper = (name: string, label: string, value: string) => `
   <div class="stepper" role="group" aria-label="${label}">
     <span class="stepper-label">${label}</span>
-    <button class="round small" data-act="step" data-name="${name}" data-delta="-1" aria-label="${t('less')} · ${label}">${icons.minus}</button>
+    <button class="tick" data-act="step" data-name="${name}" data-delta="-1" aria-label="${t('less')} · ${label}">${icons.minus}</button>
     <output>${value}</output>
-    <button class="round small" data-act="step" data-name="${name}" data-delta="1" aria-label="${t('more')} · ${label}">${icons.plus}</button>
+    <button class="tick" data-act="step" data-name="${name}" data-delta="1" aria-label="${t('more')} · ${label}">${icons.plus}</button>
   </div>`
 
-const ambienceChips = (current: Ambience, legend = t('ambience')) => `
-  <fieldset class="chips">
+/** One watercolour pigment per ambience: [wash, rim where the pigment pools]. */
+const PIGMENTS: Record<Ambience, [string, string]> = {
+  none: ['#ece6d6', '#a49d8c'],
+  wind: ['#a9cbb4', '#5b8f74'],
+  rain: ['#93abc9', '#4b6a94'],
+  fire: ['#efa75e', '#bf5a2b'],
+  stream: ['#79bcc2', '#2b7f8c'],
+}
+
+/** A small irregular blot, darker at its rim the way a dried wash is. */
+function blot(a: Ambience, seed: number): string {
+  let s = seed
+  const rand = () => (s = (s * 16807) % 2147483647) / 2147483647
+  const pts = Array.from({ length: 9 }, (_, i) => {
+    const ang = (i / 9) * Math.PI * 2 + rand() * 0.3
+    const r = 11 + (rand() - 0.5) * 5
+    return [16 + Math.cos(ang) * r, 16 + Math.sin(ang) * r]
+  })
+  const mid = (p: number[], q: number[]) => `${((p[0] + q[0]) / 2).toFixed(1)},${((p[1] + q[1]) / 2).toFixed(1)}`
+  let d = `M${mid(pts[8], pts[0])}`
+  pts.forEach((p, i) => (d += ` Q${p[0].toFixed(1)},${p[1].toFixed(1)} ${mid(p, pts[(i + 1) % 9])}`))
+  const [wash, rim] = PIGMENTS[a]
+  return `<svg viewBox="0 0 32 32" width="34" height="34" aria-hidden="true">
+    <radialGradient id="blot-${a}"><stop offset="0" stop-color="${wash}" stop-opacity="0.75"/><stop offset="0.72" stop-color="${wash}"/><stop offset="1" stop-color="${rim}"/></radialGradient>
+    <path d="${d} Z" fill="url(#blot-${a})" stroke="${rim}" stroke-opacity="0.5" stroke-width="0.8"/>
+  </svg>`
+}
+
+const ambienceBlots = (current: Ambience, legend = t('ambience')) => `
+  <fieldset class="blots">
     <legend>${legend}</legend>
-    ${AMBIENCES.map(
-      (a) => `<button class="chip" data-act="ambience" data-value="${a}" aria-pressed="${a === current}">${t(`amb_${a}` as Key)}</button>`,
-    ).join('')}
+    <div class="blots-row">
+      ${AMBIENCES.map(
+        (a, i) =>
+          `<button class="blot" data-act="ambience" data-value="${a}" aria-pressed="${a === current}" aria-label="${t(`amb_${a}` as Key)}">${blot(a, 11 + i * 7)}</button>`,
+      ).join('')}
+      <span class="blot-name" aria-hidden="true">${t(`amb_${current}` as Key)}</span>
+    </div>
   </fieldset>`
+
+/** Marks the chosen blot and writes its name beside the row. */
+function pickBlot(el: HTMLElement, chosen: HTMLElement) {
+  el.querySelectorAll('[data-act=ambience]').forEach((c) => c.setAttribute('aria-pressed', String(c === chosen)))
+  el.querySelector('.blot-name')!.textContent = chosen.getAttribute('aria-label')
+}
 
 const sheet = (title: string, body: string, footer = '') => `
 <section class="screen with-sheet">
@@ -88,7 +126,7 @@ export function showWarning(app: App, next: () => void) {
         <ul class="precautions">
           ${(['warning1', 'warning2', 'warning3', 'warning4'] as Key[]).map((k) => `<li>${t(k)}</li>`).join('')}
         </ul>
-        <button class="primary wide" data-act="ok">${t('warningOk')}</button>
+        <button class="go" data-act="ok">${t('warningOk')}</button>
       </div>
     </section>`,
     (el) =>
@@ -162,7 +200,7 @@ function chooseBody(app: App, mode: Mode): string {
     : p.meditation === 'timer'
       ? stepper('timer', t('duration'), `${p.timerMinutes} ${t('minutes')}`)
       : ''
-  return `<ul class="options">${options}</ul><div class="controls">${controls}</div>`
+  return `<ol class="options">${options}</ol><div class="controls">${controls}</div>`
 }
 
 function specFor(app: App, mode: Mode): SessionSpec {
@@ -181,8 +219,8 @@ export function showChoose(app: App, mode: Mode) {
   scene()
   const title = mode === 'sleep' ? t('sleepTitle') : t(mode === 'breathe' ? 'breathe' : 'meditate')
   const footer = `<footer class="sheet-foot">
-    ${ambienceChips(mode === 'sleep' ? app.prefs.sleepAmbience : app.prefs.ambience)}
-    <button class="primary wide" data-act="start">${t('start')}</button>
+    ${ambienceBlots(mode === 'sleep' ? app.prefs.sleepAmbience : app.prefs.ambience)}
+    <button class="go" data-act="start">${t('start')}<span aria-hidden="true"> →</span></button>
   </footer>`
   show(app, sheet(title, chooseBody(app, mode), footer), (el) => {
     const body = el.querySelector<HTMLElement>('.sheet-body')!
@@ -205,7 +243,7 @@ export function showChoose(app: App, mode: Mode) {
         if (mode === 'sleep') p.sleepAmbience = a
         else p.ambience = a
         scene()
-        el.querySelectorAll('[data-act=ambience]').forEach((c) => c.setAttribute('aria-pressed', String(c === b)))
+        pickBlot(el, b)
         save(app)
       },
       step: (b) => {
@@ -278,7 +316,7 @@ export function showSettings(app: App) {
       <span class="setting-label">${t('ambienceVolume')}</span>
       <input type="range" min="0" max="1" step="0.05" value="${p.ambienceVolume}" data-volume="ambience" />
     </label>
-    ${ambienceChips(p.ambience, t('defaultAmbience'))}
+    ${ambienceBlots(p.ambience, t('defaultAmbience'))}
     <button class="link" data-act="warning">${t('rereadWarning')}</button>`
 
   show(app, sheet(t('settings'), render()), (el) => {
