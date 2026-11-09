@@ -9,6 +9,8 @@ let ambienceBus: GainNode // user volume
 let ambienceFade: GainNode // session fades (sleep mode, stop)
 let current: { name: Sound; source: AudioBufferSourceNode; gain: GainNode } | null = null
 const buffers = new Map<Sound, AudioBuffer>()
+// Bumped by every start/stop: a load that resolves after a newer request is dropped.
+let generation = 0
 
 function getContext(): AudioContext {
   if (ctx) return ctx
@@ -40,6 +42,11 @@ export async function unlockAudio(): Promise<void> {
   silent.buffer = c.createBuffer(1, 1, c.sampleRate)
   silent.connect(c.destination)
   silent.start()
+}
+
+/** Unlock, but never block or throw: iOS can leave resume() pending during an interruption. */
+export async function unlockAudioWithin(ms: number): Promise<void> {
+  await Promise.race([unlockAudio().catch(() => {}), new Promise((r) => setTimeout(r, ms))])
 }
 
 export function setVolumes(note: number, ambience: number): void {
@@ -101,9 +108,10 @@ export async function startAmbience(name: Ambience): Promise<void> {
   ambienceFade.gain.setValueAtTime(1, c.currentTime)
   if (current?.name === name) return
   stopAmbience(1)
+  const mine = ++generation
   if (name === 'none') return
   const buffer = await loadAmbience(name)
-  if (!buffer || current) return
+  if (!buffer || mine !== generation) return
   const gain = c.createGain()
   gain.gain.setValueAtTime(0, c.currentTime)
   gain.gain.linearRampToValueAtTime(1, c.currentTime + 2)
@@ -137,5 +145,6 @@ export function fadeAmbienceTo(level: number, seconds: number): void {
 }
 
 export function stopAll(fadeSeconds = 1): void {
+  generation++
   stopAmbience(Math.max(fadeSeconds, 0.05))
 }

@@ -1,4 +1,4 @@
-import { fadeAmbienceTo, playCue, startAmbience, stopAll } from '../audio/engine'
+import { fadeAmbienceTo, playCue, startAmbience, stopAll, unlockAudio } from '../audio/engine'
 import { buildSleepTimeline, stepAt, type Timeline } from '../breath/timeline'
 import { getLang, t, type Key } from '../i18n'
 import { cueAt, type Meditation } from '../meditate/scripts'
@@ -157,6 +157,8 @@ export function startSession(stage: Stage, spec: SessionSpec, onEnd: (how: Sessi
 
   function resume() {
     if (!clock.paused) return
+    // The Reprendre tap is a user gesture: the one moment iOS lets a suspended context restart.
+    void unlockAudio().catch(() => {})
     clock.resume()
     pausedEl.hidden = true
     const s = now()

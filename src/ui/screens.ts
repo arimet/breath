@@ -1,4 +1,4 @@
-import { playCue, setVolumes, unlockAudio } from '../audio/engine'
+import { playCue, setVolumes, unlockAudioWithin } from '../audio/engine'
 import { MAX_478_CYCLES, phasesFor, type CustomRhythm, type PresetId } from '../breath/patterns'
 import { buildTimeline } from '../breath/timeline'
 import { getLang, setLang, t, type Key } from '../i18n'
@@ -211,8 +211,11 @@ export function showChoose(app: App, mode: Mode) {
         }
         refresh()
       },
-      start: async () => {
-        await unlockAudio()
+      start: async (b) => {
+        // A second tap while audio unlocks must not start a second session.
+        if (b.hasAttribute('aria-busy')) return
+        b.setAttribute('aria-busy', 'true')
+        await unlockAudioWithin(800)
         setVolumes(p.noteVolume, p.ambienceVolume)
         startSession(app, specFor(app, mode), (how) => {
           if (how === 'dizzy') showDizzy(app)
@@ -292,7 +295,7 @@ export function showSettings(app: App) {
       if (input.dataset.volume === 'note') p.noteVolume = Number(input.value)
       else p.ambienceVolume = Number(input.value)
       save(app)
-      await unlockAudio()
+      await unlockAudioWithin(800)
       setVolumes(p.noteVolume, p.ambienceVolume)
       if (input.dataset.volume === 'note') playCue('inhale')
     })
