@@ -40,7 +40,7 @@ The guidance is written on screen; there is no voice.
 
 ## Sleep
 
-The breath slows from 12 to 6 breaths a minute over 5 minutes, then four 4-7-8 cycles, then 6 minutes of free breathing while the sound fades out. The screen ends black. Lie down and leave the phone beside you.
+The breath slows from 12 to 6 breaths a minute over 5 minutes, then four 4-7-8 cycles, then 6 minutes of free breathing while the sound fades out. It is meant to be followed with eyes closed: a soft surf swells as you breathe in and ebbs as you breathe out, and the screen stays almost black, with only a faint ensō. Tap it to see the controls.
 
 ## Ambiences
 

@@ -1,4 +1,4 @@
-import { fadeAmbienceTo, playCue, startAmbience, stopAll, unlockAudio } from '../audio/engine'
+import { fadeAmbienceTo, playCue, startAmbience, startWave, stopAll, stopWave, unlockAudio, waveTo } from '../audio/engine'
 import { buildSleepTimeline, stepAt, type Timeline } from '../breath/timeline'
 import { getLang, t, type Key } from '../i18n'
 import { cueAt, type Meditation } from '../meditate/scripts'
@@ -23,6 +23,14 @@ export interface Stage {
 }
 
 const SLEEP_FADE_SECONDS = 180
+// Sleep keeps the screen on (iOS cuts web audio when it locks) but almost black.
+const SLEEP_DIM = 0.85
+
+/** How dark the land is at second s of a sleep session: very dark, then black over the last minutes. */
+export function sleepDim(s: number, total: number): number {
+  const fade = Math.min(1, Math.max(0, (s - (total - SLEEP_FADE_SECONDS)) / SLEEP_FADE_SECONDS))
+  return SLEEP_DIM + (1 - SLEEP_DIM) * fade
+}
 // Meditations get a slow, silent 4 s in / 6 s out shape to rest the eyes on.
 const MEDITATION_BREATH: Timeline = {
   steps: [
@@ -51,8 +59,8 @@ export function startSession(stage: Stage, spec: SessionSpec, onEnd: (how: Sessi
   const speed = devSpeed()
 
   land.setScene(skyAt(), spec.ambience)
-  const ink = ensoUrl(document.documentElement.dataset.ink === 'light' ? '#f3efe2' : '#24303c')
-  land.dim(0)
+  const ink = ensoUrl(sleep || document.documentElement.dataset.ink === 'light' ? '#f3efe2' : '#24303c')
+  land.dim(sleep ? SLEEP_DIM : 0)
   document.documentElement.dataset.session = spec.kind
   document.documentElement.dataset.view = 'open'
   root.innerHTML = `
@@ -109,6 +117,7 @@ export function startSession(stage: Stage, spec: SessionSpec, onEnd: (how: Sessi
   }
 
   void startAmbience(spec.ambience)
+  if (sleep) startWave()
   void requestWakeLock().then((ok) => {
     if (ok) return
     toast.textContent = t('keepAwake')
@@ -134,7 +143,11 @@ export function startSession(stage: Stage, spec: SessionSpec, onEnd: (how: Sessi
       const next = timeline.steps[at.index + 1]?.kind
       if (at.index !== lastIndex) {
         lastIndex = at.index
-        if (at.step.cue) playCue(at.step.kind)
+        // Sleep is followed with eyes closed: the wave carries the breath instead of notes.
+        if (!sleep) {
+          if (at.step.cue) playCue(at.step.kind)
+        } else if (at.step.cue) waveTo(at.step.kind, (at.step.seconds * (1 - at.progress)) / speed)
+        else stopWave(20)
       }
       setPhase(at.step.cue ? at.step.kind : 'free')
       draw(
@@ -161,7 +174,7 @@ export function startSession(stage: Stage, spec: SessionSpec, onEnd: (how: Sessi
         fading = true
         fadeAmbienceTo(0, (total - s) / speed)
       }
-      land.dim(Math.min(1, (s - fadeStart) / SLEEP_FADE_SECONDS))
+      land.dim(sleepDim(s, total))
     }
     raf = requestAnimationFrame(frame)
   }
@@ -171,6 +184,7 @@ export function startSession(stage: Stage, spec: SessionSpec, onEnd: (how: Sessi
     clock.pause()
     cancelAnimationFrame(raf)
     fadeAmbienceTo(0, 0.6)
+    stopWave(0.6)
     pausedEl.hidden = false
   }
 
@@ -181,6 +195,10 @@ export function startSession(stage: Stage, spec: SessionSpec, onEnd: (how: Sessi
     clock.resume()
     pausedEl.hidden = true
     const s = now()
+    if (sleep && timeline && stepAt(timeline, s)?.step.cue) {
+      startWave()
+      lastIndex = -1 // the next frame sends the wave towards the current phase
+    }
     if (sleep && s >= fadeStart) {
       const level = Math.max(0, (total - s) / SLEEP_FADE_SECONDS)
       fadeAmbienceTo(level, 0.8)

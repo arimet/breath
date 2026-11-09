@@ -144,7 +144,72 @@ export function fadeAmbienceTo(level: number, seconds: number): void {
   ambienceFade.gain.linearRampToValueAtTime(level, t + seconds)
 }
 
+/*
+ * Sleep mode's guide: a soft surf of filtered noise that swells as you breathe in and
+ * ebbs as you breathe out, so the breath can be followed with eyes closed.
+ */
+let wave: { source: AudioBufferSourceNode; filter: BiquadFilterNode; level: GainNode; out: GainNode } | null = null
+
+/** Where the wave heads during a phase; null for holds, where it stays still. */
+export function waveShape(kind: PhaseKind): { level: number; cutoff: number } | null {
+  if (kind === 'inhale') return { level: 0.5, cutoff: 1300 }
+  if (kind === 'inhale2') return { level: 0.6, cutoff: 1700 }
+  if (kind === 'exhale') return { level: 0.06, cutoff: 280 }
+  return null
+}
+
+export function startWave(): void {
+  if (!ctx || wave) return
+  // Four seconds of pink noise (Paul Kellet's filter), looped.
+  const buffer = ctx.createBuffer(1, ctx.sampleRate * 4, ctx.sampleRate)
+  const data = buffer.getChannelData(0)
+  let b0 = 0, b1 = 0, b2 = 0
+  for (let i = 0; i < data.length; i++) {
+    const white = Math.random() * 2 - 1
+    b0 = 0.99765 * b0 + white * 0.099046
+    b1 = 0.963 * b1 + white * 0.2965164
+    b2 = 0.57 * b2 + white * 1.0526913
+    data[i] = (b0 + b1 + b2 + white * 0.1848) * 0.2
+  }
+  const source = ctx.createBufferSource()
+  source.buffer = buffer
+  source.loop = true
+  const filter = ctx.createBiquadFilter()
+  filter.type = 'lowpass'
+  filter.frequency.value = 280
+  const level = ctx.createGain()
+  level.gain.value = 0.06
+  const out = ctx.createGain()
+  out.gain.setValueAtTime(0, ctx.currentTime)
+  out.gain.linearRampToValueAtTime(1, ctx.currentTime + 1.5)
+  source.connect(filter).connect(level).connect(out).connect(noteBus)
+  source.start()
+  wave = { source, filter, level, out }
+}
+
+/** Glides the wave towards a phase's shape over the phase's length. */
+export function waveTo(kind: PhaseKind, seconds: number): void {
+  const shape = waveShape(kind)
+  if (!ctx || !wave || !shape) return
+  const t = ctx.currentTime
+  // Three time constants reach ~95% of the target by the end of the phase.
+  wave.level.gain.setTargetAtTime(shape.level, t, seconds / 3)
+  wave.filter.frequency.setTargetAtTime(shape.cutoff, t, seconds / 3)
+}
+
+export function stopWave(fadeSeconds: number): void {
+  if (!ctx || !wave) return
+  const { source, out } = wave
+  const t = ctx.currentTime
+  out.gain.cancelScheduledValues(t)
+  out.gain.setValueAtTime(out.gain.value, t)
+  out.gain.linearRampToValueAtTime(0, t + fadeSeconds)
+  source.stop(t + fadeSeconds + 0.05)
+  wave = null
+}
+
 export function stopAll(fadeSeconds = 1): void {
   generation++
   stopAmbience(Math.max(fadeSeconds, 0.05))
+  stopWave(Math.max(fadeSeconds, 0.05))
 }
