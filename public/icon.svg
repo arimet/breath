@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="s" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#9db6d6"/>
+      <stop offset="0.6" stop-color="#efd2c3"/>
+      <stop offset="1" stop-color="#f7e3c4"/>
+    </linearGradient>
+    <radialGradient id="g">
+      <stop offset="0" stop-color="#fffaf0"/>
+      <stop offset="0.45" stop-color="#fff1d2" stop-opacity="0.85"/>
+      <stop offset="1" stop-color="#fff1d2" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="wc" x="-10%" y="-10%" width="120%" height="120%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.018" numOctaves="3" seed="3" result="w"/>
+      <feDisplacementMap in="SourceGraphic" in2="w" scale="14" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+  </defs>
+  <rect width="512" height="512" fill="url(#s)"/>
+  <circle cx="256" cy="220" r="150" fill="url(#g)"/>
+  <circle cx="256" cy="220" r="72" fill="#fffaf0" opacity="0.95" filter="url(#wc)"/>
+  <path d="M-20 360 C 80 300 160 330 250 350 S 420 310 540 340 V 540 H -20 Z" fill="#8fa2c2" filter="url(#wc)"/>
+  <path d="M-20 400 C 90 370 170 390 260 405 S 430 380 540 395 V 540 H -20 Z" fill="#9cbc96" filter="url(#wc)"/>
+  <path d="M-20 450 C 100 425 210 440 300 452 S 450 435 540 445 V 540 H -20 Z" fill="#4b7a55" filter="url(#wc)"/>
+</svg>

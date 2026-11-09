@@ -15,3 +15,9 @@ const app: App = {
 
 if (prefs.warningSeen) showHome(app)
 else showWarning(app, () => showHome(app))
+
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(() => {
+    // no offline mode, the app still works online
+  })
+}
