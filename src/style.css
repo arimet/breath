@@ -712,12 +712,12 @@ input[type='range'] {
 }
 
 /* Sleep: everything recedes. */
-.is-sleep { color: #c9cde0; }
+:root[data-sky='night'] .is-sleep { color: #c9cde0; }
 .is-sleep .s-top,
 .is-sleep .s-controls { opacity: 0.32; transition: opacity 0.8s var(--ease); }
 .is-sleep.show-controls .s-top,
 .is-sleep.show-controls .s-controls { opacity: 1; }
-.is-sleep .words { text-shadow: none; opacity: 0.75; }
+:root[data-sky='night'] .is-sleep .words { text-shadow: none; opacity: 0.75; }
 .is-sleep .breather { opacity: 0.7; }
 
 @media (prefers-reduced-motion: reduce) {

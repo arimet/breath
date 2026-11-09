@@ -8,7 +8,7 @@ import { releaseWakeLock, requestWakeLock } from '../wakelock'
 import { breatherScale } from './breather'
 import { ENSO_START, ENSO_SWEEP, ensoUrl } from './enso'
 import { icons } from './icons'
-import type { Land } from './landscape'
+import { skyAt, type Land } from './landscape'
 
 export type SessionSpec =
   | { kind: 'breath'; timeline: Timeline; ambience: Ambience }
@@ -50,7 +50,7 @@ export function startSession(stage: Stage, spec: SessionSpec, onEnd: (how: Sessi
   const fadeStart = total - SLEEP_FADE_SECONDS
   const speed = devSpeed()
 
-  land.setScene(spec.kind === 'breath' ? 'dawn' : spec.kind === 'meditation' ? 'afternoon' : 'night', spec.ambience)
+  land.setScene(skyAt(), spec.ambience)
   const ink = ensoUrl(document.documentElement.dataset.ink === 'light' ? '#f3efe2' : '#24303c')
   land.dim(0)
   document.documentElement.dataset.session = spec.kind

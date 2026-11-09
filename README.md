@@ -44,7 +44,7 @@ The breath slows from 12 to 6 breaths a minute over 5 minutes, then four 4-7-8 c
 
 ## Ambiences
 
-Wind, rain, campfire, stream or silence. The landscape follows the one you pick: rain brings a grey sky and a shower, the campfire turns the day to dusk, the stream runs down the hills. The sky also follows the mode: dawn to breathe, afternoon to meditate, night to sleep.
+Wind, rain, campfire, stream or silence. The landscape follows the one you pick: rain brings a grey sky and a shower, the campfire turns the day to dusk, the stream runs down the hills. The sky follows the time of day on every screen: dawn in the morning, afternoon light until 7 pm, then night.
 
 ## Safety
 

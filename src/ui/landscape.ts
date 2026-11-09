@@ -1,6 +1,12 @@
 import type { Ambience } from '../prefs'
 
 export type Sky = 'dawn' | 'afternoon' | 'night'
+
+/** Every screen paints the sky of the hour: dawn 5–11 h, afternoon 11–19 h, night otherwise. */
+export function skyAt(date = new Date()): Sky {
+  const h = date.getHours()
+  return h >= 5 && h < 11 ? 'dawn' : h >= 11 && h < 19 ? 'afternoon' : 'night'
+}
 export interface Land {
   setScene(sky: Sky, ambience: Ambience): void
   dim(level: number): void

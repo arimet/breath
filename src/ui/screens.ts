@@ -5,7 +5,7 @@ import { getLang, setLang, t, type Key } from '../i18n'
 import { buildMeditation, type MeditationId } from '../meditate/scripts'
 import { AMBIENCES, savePrefs, type Ambience, type Prefs } from '../prefs'
 import { icons } from './icons'
-import type { Sky } from './landscape'
+import { skyAt } from './landscape'
 import { startSession, type SessionSpec, type Stage } from './session'
 
 export interface App extends Stage {
@@ -22,11 +22,6 @@ const CUSTOM_FIELDS: { field: keyof CustomRhythm; label: Key; min: number }[] = 
   { field: 'exhale', label: 'exhale', min: 1 },
   { field: 'holdOut', label: 'holdOut', min: 0 },
 ]
-
-function homeSky(): Sky {
-  const h = new Date().getHours()
-  return h >= 5 && h < 11 ? 'dawn' : h >= 11 && h < 19 ? 'afternoon' : 'night'
-}
 
 function save(app: App) {
   savePrefs(app.prefs)
@@ -117,7 +112,7 @@ const sheet = (title: string, body: string, footer = '') => `
 </section>`
 
 export function showWarning(app: App, next: () => void) {
-  app.land.setScene(homeSky(), app.prefs.ambience)
+  app.land.setScene(skyAt(), app.prefs.ambience)
   show(
     app,
     `<section class="screen warning">
@@ -141,7 +136,7 @@ export function showWarning(app: App, next: () => void) {
 }
 
 export function showHome(app: App) {
-  app.land.setScene(homeSky(), app.prefs.ambience)
+  app.land.setScene(skyAt(), app.prefs.ambience)
   app.land.dim(0)
   const entry = (mode: Mode, hint: Key) => `
     <li><button class="entry" data-act="mode" data-mode="${mode}">
@@ -214,8 +209,7 @@ function specFor(app: App, mode: Mode): SessionSpec {
 const clampTo = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v))
 
 export function showChoose(app: App, mode: Mode) {
-  const sky: Sky = mode === 'breathe' ? 'dawn' : mode === 'meditate' ? 'afternoon' : 'night'
-  const scene = () => app.land.setScene(sky, mode === 'sleep' ? app.prefs.sleepAmbience : app.prefs.ambience)
+  const scene = () => app.land.setScene(skyAt(), mode === 'sleep' ? app.prefs.sleepAmbience : app.prefs.ambience)
   scene()
   const title = mode === 'sleep' ? t('sleepTitle') : t(mode === 'breathe' ? 'breathe' : 'meditate')
   const footer = `<footer class="sheet-foot">
@@ -331,7 +325,7 @@ export function showSettings(app: App) {
       },
       ambience: (b) => {
         p.ambience = b.dataset.value as Ambience
-        app.land.setScene(homeSky(), p.ambience)
+        app.land.setScene(skyAt(), p.ambience)
         save(app)
         body.innerHTML = render()
       },
