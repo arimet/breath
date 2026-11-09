@@ -34,50 +34,15 @@
   --land-shadow: 0 1px 14px rgb(20 34 40 / 0.45), 0 0 2px rgb(20 34 40 / 0.35);
   --sky-ink: #233140;
 
-  --sky-top: #9db6d6;
-  --sky-mid: #efd2c3;
-  --sky-low: #f7e3c4;
-  --glow: #fff1d2;
-  --cloud: #fff7ef;
-  --mtn: #8fa2c2;
-  --haze: #b5c4c9;
-  --hill-far: #9cbc96;
-  --hill-mid: #6c9b6f;
-  --hill-near: #4b7a55;
-  --tree: #3c6447;
-  --stars: 0;
-  --paper-grain: 0.3;
   color-scheme: light;
 }
 
 :root[data-sky='afternoon'] {
-  --sky-top: #6c9fd3;
-  --sky-mid: #a9cce6;
-  --sky-low: #f1e2b6;
-  --glow: #fff4c4;
-  --cloud: #ffffff;
-  --mtn: #7b95bb;
-  --haze: #a9c2c6;
-  --hill-far: #a3c27c;
-  --hill-mid: #78a95c;
-  --hill-near: #557f45;
-  --tree: #3b6436;
 }
 
+:root[data-ink='light'] { --sky-ink: #f3efe2; }
+
 :root[data-sky='night'] {
-  --sky-top: #0a1130;
-  --sky-mid: #1a2452;
-  --sky-low: #2e3766;
-  --glow: #e8e4d2;
-  --cloud: #29335c;
-  --mtn: #1e2a4e;
-  --haze: #1d2949;
-  --hill-far: #1b2a45;
-  --hill-mid: #15223a;
-  --hill-near: #0f192b;
-  --tree: #0c1526;
-  --stars: 1;
-  --paper-grain: 0.16;
   --sky-ink: #e9e5d6;
   --paper: #1b2346;
   --paper-deep: #232c55;
@@ -99,7 +64,7 @@ body {
   margin: 0;
   height: 100%;
   overflow: hidden;
-  background: var(--hill-near);
+  background: #0f192b;
   color: var(--ink);
   font-family: var(--sans);
   font-size: 17px;
@@ -140,38 +105,86 @@ h2 {
 }
 
 /* ---------- Landscape ---------- */
+/* The painted scene is a pre-rendered image; only transform/opacity layers animate. */
 #land {
   position: fixed;
   inset: 0;
+  overflow: hidden;
+  background: #0f192b;
 }
-.land {
+.stage {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  width: max(100vw, calc(100dvh * 390 / 844));
+  aspect-ratio: 390 / 844;
+  transform: translateX(-50%);
+  overflow: hidden;
+  transition: transform 0.9s var(--ease);
+}
+:root[data-view='sheet'] .stage { transform: translate(-50%, -54%); }
+.scene {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
+  opacity: 0;
+  transition: opacity 1.4s var(--ease);
+}
+.scene.on { opacity: 1; }
+.clouds {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 200%;
+  height: calc(100% * 420 / 844);
+  animation: clouds 180s linear infinite;
+  will-change: transform;
+}
+.clouds img { display: block; width: 100%; height: 100%; }
+:root[data-ambience='wind'] .clouds { animation-duration: 55s; }
+:root[data-ambience='rain'] .clouds { animation-duration: 120s; }
+@keyframes clouds { to { transform: translateX(-50%); } }
+.rain {
+  position: absolute;
+  left: 0;
+  top: -100%;
+  width: 100%;
+  height: 200%;
+  background-size: 100% 50%;
+  display: none;
+}
+:root[data-ambience='rain'] .rain {
   display: block;
+  opacity: 0.7;
+  animation: rain 0.8s linear infinite;
+  will-change: transform;
 }
-.land * {
-  transition: fill 2.4s var(--ease), stop-color 2.4s var(--ease), opacity 2.4s var(--ease);
+:root[data-ambience='rain'][data-sky='night'] .rain { opacity: 0.35; }
+@keyframes rain { to { transform: translateY(50%); } }
+.flicker {
+  position: absolute;
+  left: calc(330 / 390 * 100%);
+  top: calc(732 / 844 * 100%);
+  width: 70%;
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgb(255 170 80 / 0.45), rgb(255 140 60 / 0) 62%);
+  display: none;
 }
-.sky-top { stop-color: var(--sky-top); }
-.sky-mid { stop-color: var(--sky-mid); }
-.sky-low { stop-color: var(--sky-low); }
-.glow-core { stop-color: var(--glow); }
-.glow { opacity: 0.75; }
-.orb-sun { fill: var(--glow); }
-.stars { fill: #fffbe8; opacity: var(--stars); }
-.stars .twinkle { animation: twinkle 6s ease-in-out infinite; }
-.clouds { fill: var(--cloud); opacity: 0.85; }
-.mtn { fill: var(--mtn); }
-.hill-far { fill: var(--hill-far); }
-.hill-mid { fill: var(--hill-mid); }
-.hill-near { fill: var(--hill-near); }
-.tree, .grove { fill: var(--tree); }
-.grove { opacity: 0.55; }
-.haze-ridge { fill: var(--haze); opacity: 0.8; }
-.grass path { fill: none; stroke: var(--tree); stroke-width: 1.2; stroke-linecap: round; opacity: 0.45; }
-:root[data-session] .glow, :root[data-session] .orb-sun { opacity: 0; }
-.paper { opacity: var(--paper-grain); mix-blend-mode: multiply; }
-.drift { animation: drift 140s ease-in-out infinite alternate; }
+:root[data-ambience='fire'] .flicker {
+  display: block;
+  animation: flicker 3.2s ease-in-out infinite;
+  will-change: opacity;
+}
+@keyframes flicker {
+  0%, 100% { opacity: 0.75; }
+  18% { opacity: 1; }
+  33% { opacity: 0.6; }
+  52% { opacity: 0.95; }
+  71% { opacity: 0.7; }
+}
 .land-dim {
   position: absolute;
   inset: 0;
@@ -179,12 +192,6 @@ h2 {
   opacity: 0;
   pointer-events: none;
   transition: opacity 1.2s linear;
-}
-@keyframes drift {
-  to { transform: translateX(-60px); }
-}
-@keyframes twinkle {
-  50% { opacity: 0.35; }
 }
 
 /* ---------- Screens ---------- */
@@ -207,16 +214,12 @@ h2 {
   height: 48px;
   border-radius: 50%;
   color: var(--on-land);
-  background: rgb(14 28 30 / 0.22);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  background: rgb(14 28 30 / 0.3);
   transition: transform 0.25s var(--ease), background-color 0.25s;
 }
 .round:active { transform: scale(0.92); }
 .round.ghost {
   background: transparent;
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
   color: inherit;
 }
 .round.small {
@@ -303,7 +306,7 @@ h2 {
 .with-sheet { justify-content: flex-end; padding: 0; }
 .sheet {
   position: relative;
-  max-height: 80dvh;
+  max-height: 64dvh;
   display: flex;
   flex-direction: column;
   background: var(--paper);
@@ -342,7 +345,29 @@ h2 {
   scrollbar-width: thin;
   scrollbar-color: var(--paper-deep) transparent;
 }
-.sheet-foot { padding: 12px 20px 18px; }
+.sheet-foot {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+  padding: 10px 0 18px;
+  border-top: 1px solid color-mix(in srgb, var(--ink) 10%, transparent);
+}
+.sheet-foot .primary.wide { margin: 0 20px; width: auto; }
+.sheet-foot .chips {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  padding: 0 20px;
+  scrollbar-width: none;
+}
+.sheet-foot .chips::-webkit-scrollbar { display: none; }
+.sheet-foot .chips legend {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+.sheet-foot .chip { flex: none; }
 
 .options {
   list-style: none;
@@ -505,43 +530,30 @@ input[type='range'] {
   aspect-ratio: 1;
   margin-top: -6dvh;
 }
-.ring {
+.enso, .enso-ghost {
   position: absolute;
   inset: 0;
-  border-radius: 50%;
-  border: 1.5px solid color-mix(in srgb, var(--on-land) 55%, transparent);
+  width: 100%;
+  height: 100%;
 }
-.orb {
+.enso-ghost { opacity: 0.13; }
+.enso {
+  --sweep: 0deg;
+  /* the brush draws clockwise from where it landed; a soft front edge reads as wet ink */
+  -webkit-mask-image: conic-gradient(from var(--from), #000 0deg, #000 calc(var(--sweep) - 7deg), transparent var(--sweep));
+  mask-image: conic-gradient(from var(--from), #000 0deg, #000 calc(var(--sweep) - 7deg), transparent var(--sweep));
+}
+.enso-glow {
   position: absolute;
-  inset: 0;
+  inset: 8%;
   border-radius: 50%;
-  will-change: transform;
-  transform: scale(0.5);
+  background: radial-gradient(circle, rgb(255 250 235 / 0.55), rgb(255 250 235 / 0) 68%);
+  opacity: 0;
+  transition: opacity 1.4s var(--ease);
 }
-.orb::before {
-  content: '';
-  position: absolute;
-  inset: -18%;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgb(255 240 210 / 0.38), transparent 66%);
-  filter: blur(8px);
-}
-:root[data-sky='night'] .orb::before { background: radial-gradient(circle, rgb(170 186 240 / 0.14), transparent 66%); }
-.orb-core {
-  position: absolute;
-  inset: 0;
-  border-radius: 46% 54% 52% 48% / 52% 46% 54% 48%;
-  background:
-    radial-gradient(circle at 42% 38%, rgb(255 253 244 / 0.98), rgb(255 241 214 / 0.82) 38%, rgb(255 226 186 / 0.35) 64%, transparent 72%);
-  animation: breathe-shape 9s ease-in-out infinite alternate;
-}
-:root[data-sky='night'] .orb-core {
-  background: radial-gradient(circle at 42% 38%, rgb(236 238 255 / 0.9), rgb(196 206 240 / 0.55) 40%, rgb(150 166 220 / 0.2) 64%, transparent 72%);
-  opacity: 0.6;
-}
-@keyframes breathe-shape {
-  to { border-radius: 53% 47% 46% 54% / 47% 54% 46% 53%; transform: rotate(14deg); }
-}
+:root[data-ink='light'] .enso-glow { background: radial-gradient(circle, rgb(255 214 160 / 0.28), rgb(255 214 160 / 0) 68%); }
+.session[data-phase='hold'] .enso-glow,
+.session[data-phase='inhale2'] .enso-glow { opacity: 1; }
 .words {
   display: grid;
   justify-items: center;
@@ -621,10 +633,10 @@ input[type='range'] {
 .is-sleep.show-controls .s-top,
 .is-sleep.show-controls .s-controls { opacity: 1; }
 .is-sleep .words { text-shadow: none; opacity: 0.75; }
-.is-sleep .ring { border-color: rgb(200 206 230 / 0.18); }
+.is-sleep .breather { opacity: 0.7; }
 
 @media (prefers-reduced-motion: reduce) {
-  .drift, .stars .twinkle, .orb-core { animation: none; }
+  .clouds, .rain, .flicker { animation: none; }
   .sheet, .toast { animation: none; }
 }
 

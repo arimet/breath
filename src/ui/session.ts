@@ -6,8 +6,9 @@ import type { Ambience } from '../prefs'
 import { createClock } from '../session/clock'
 import { releaseWakeLock, requestWakeLock } from '../wakelock'
 import { breatherScale } from './breather'
+import { ENSO_START, ENSO_SWEEP, ensoUrl } from './enso'
 import { icons } from './icons'
-import type { Sky } from './landscape'
+import type { Land } from './landscape'
 
 export type SessionSpec =
   | { kind: 'breath'; timeline: Timeline; ambience: Ambience }
@@ -18,7 +19,7 @@ export type SessionEnd = 'done' | 'stop' | 'dizzy'
 
 export interface Stage {
   root: HTMLElement
-  land: { setSky(s: Sky): void; dim(level: number): void }
+  land: Land
 }
 
 const SLEEP_FADE_SECONDS = 180
@@ -49,16 +50,20 @@ export function startSession(stage: Stage, spec: SessionSpec, onEnd: (how: Sessi
   const fadeStart = total - SLEEP_FADE_SECONDS
   const speed = devSpeed()
 
-  land.setSky(spec.kind === 'breath' ? 'dawn' : spec.kind === 'meditation' ? 'afternoon' : 'night')
+  land.setScene(spec.kind === 'breath' ? 'dawn' : spec.kind === 'meditation' ? 'afternoon' : 'night', spec.ambience)
+  const ink = ensoUrl(document.documentElement.dataset.ink === 'light' ? '#f3efe2' : '#24303c')
   land.dim(0)
   document.documentElement.dataset.session = spec.kind
+  document.documentElement.dataset.view = 'open'
   root.innerHTML = `
 <section class="session ${sleep ? 'is-sleep' : ''}" data-kind="${spec.kind}">
   <header class="s-top">
     <button class="link dizzy" data-act="dizzy">${t('dizzy')}</button>
     <span class="remaining" aria-label="${t('duration')}"></span>
   </header>
-  <div class="breather" aria-hidden="true"><div class="ring"></div><div class="orb"><div class="orb-core"></div></div></div>
+  <div class="breather" aria-hidden="true" style="--from:${ENSO_START}deg">
+    <div class="enso-glow"></div><img class="enso-ghost" src="${ink}" alt=""/><img class="enso" src="${ink}" alt=""/>
+  </div>
   <div class="words">
     <p class="phase" aria-live="polite"></p>
     <p class="count"></p>
@@ -77,7 +82,7 @@ export function startSession(stage: Stage, spec: SessionSpec, onEnd: (how: Sessi
 
   const $ = <T extends HTMLElement>(s: string) => root.querySelector<T>(s)!
   const section = $('.session')
-  const orb = $('.orb')
+  const enso = $('.enso')
   const phase = $('.phase')
   const count = $('.count')
   const cueText = $('.cue-text')
@@ -92,6 +97,16 @@ export function startSession(stage: Stage, spec: SessionSpec, onEnd: (how: Sessi
   let fading = false
   let finished = false
   const now = () => clock.elapsed() * speed
+  // Only touch the DOM when something visible changes: 13 minutes of sleep with the screen on.
+  let shown = { sweep: -1, remaining: '', count: '', phase: '' }
+  function draw(scale: number, kind: string, countText: string, remainingText: string) {
+    const sweep = Math.round((scale - 0.5) * 2 * ENSO_SWEEP * 4) / 4
+    if (sweep !== shown.sweep) enso.style.setProperty('--sweep', `${sweep}deg`)
+    if (kind !== shown.phase) section.dataset.phase = kind
+    if (countText !== shown.count) count.textContent = countText
+    if (remainingText !== shown.remaining) remaining.textContent = remainingText
+    shown = { sweep, remaining: remainingText, count: countText, phase: kind }
+  }
 
   void startAmbience(spec.ambience)
   void requestWakeLock().then((ok) => {
@@ -112,22 +127,26 @@ export function startSession(stage: Stage, spec: SessionSpec, onEnd: (how: Sessi
   function frame() {
     const s = now()
     if (s >= total) return finish('done')
-    remaining.textContent = clock2(total - s)
+    const remainingText = clock2(total - s)
 
     if (timeline) {
       const at = stepAt(timeline, s)!
       const next = timeline.steps[at.index + 1]?.kind
-      orb.style.transform = `scale(${breatherScale(at.step, at.progress, next)})`
       if (at.index !== lastIndex) {
         lastIndex = at.index
         if (at.step.cue) playCue(at.step.kind)
       }
       setPhase(at.step.cue ? at.step.kind : 'free')
-      count.textContent = at.step.cue ? String(Math.ceil(at.step.seconds * (1 - at.progress))) : ''
+      draw(
+        breatherScale(at.step, at.progress, next),
+        at.step.kind,
+        at.step.cue ? String(Math.ceil(at.step.seconds * (1 - at.progress))) : '',
+        remainingText,
+      )
     } else {
       const m = (spec as { meditation: Meditation }).meditation
       const at = stepAt(MEDITATION_BREATH, s % MEDITATION_BREATH.total)!
-      orb.style.transform = `scale(${breatherScale(at.step, at.progress)})`
+      draw(breatherScale(at.step, at.progress), at.step.kind, '', remainingText)
       const cue = cueAt(m, s)
       if (cue && cue !== lastCue) {
         lastCue = cue

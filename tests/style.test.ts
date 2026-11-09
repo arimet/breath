@@ -24,16 +24,17 @@ test('controls are not dimmed outside sleep mode', () => {
   expect(rules('.s-controls').join()).not.toMatch(/(^|;|\s)opacity:/)
 })
 
-test('the night orb colours only apply at night', () => {
-  expect(rules('.orb-core')).toHaveLength(1)
-  expect(rules(":root[data-sky='night'] .orb-core")).toHaveLength(1)
+test('the ensō is revealed by a conic mask driven by --sweep', () => {
+  const body = rules('.enso').join()
+  expect(body).toMatch(/mask-image:\s*conic-gradient\(from var\(--from\)/)
+  expect(body).toMatch(/var\(--sweep\)/)
 })
 
-test('reduced motion stops the scenery and the orb shape', () => {
+test('reduced motion stops the moving scenery', () => {
   const block = css.slice(css.indexOf('@media (prefers-reduced-motion: reduce)'))
   const first = block.slice(0, block.indexOf('}') + 1)
-  expect(first).toMatch(/\.drift/)
-  expect(first).toMatch(/\.stars \.twinkle/)
-  expect(first).toMatch(/\.orb-core/)
+  expect(first).toMatch(/\.clouds/)
+  expect(first).toMatch(/\.rain/)
+  expect(first).toMatch(/\.flicker/)
   expect(first).toMatch(/animation:\s*none/)
 })

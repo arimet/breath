@@ -36,6 +36,8 @@ function save(app: App) {
 function show(app: App, html: string, bind: (el: HTMLElement) => void) {
   app.root.innerHTML = html
   const el = app.root.firstElementChild as HTMLElement
+  // With a sheet open, the land slides up so the scene stays in view above it.
+  document.documentElement.dataset.view = el.classList.contains('with-sheet') ? 'sheet' : 'open'
   bind(el)
   el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 450, easing: 'ease-out' })
   el.querySelector<HTMLElement>('h1, h2')?.focus({ preventScroll: true })
@@ -56,9 +58,9 @@ const stepper = (name: string, label: string, value: string) => `
     <button class="round small" data-act="step" data-name="${name}" data-delta="1" aria-label="${t('more')} · ${label}">${icons.plus}</button>
   </div>`
 
-const ambienceChips = (current: Ambience) => `
+const ambienceChips = (current: Ambience, legend = t('ambience')) => `
   <fieldset class="chips">
-    <legend>${t('ambience')}</legend>
+    <legend>${legend}</legend>
     ${AMBIENCES.map(
       (a) => `<button class="chip" data-act="ambience" data-value="${a}" aria-pressed="${a === current}">${t(`amb_${a}` as Key)}</button>`,
     ).join('')}
@@ -77,7 +79,7 @@ const sheet = (title: string, body: string, footer = '') => `
 </section>`
 
 export function showWarning(app: App, next: () => void) {
-  app.land.setSky(homeSky())
+  app.land.setScene(homeSky(), app.prefs.ambience)
   show(
     app,
     `<section class="screen warning">
@@ -101,7 +103,7 @@ export function showWarning(app: App, next: () => void) {
 }
 
 export function showHome(app: App) {
-  app.land.setSky(homeSky())
+  app.land.setScene(homeSky(), app.prefs.ambience)
   app.land.dim(0)
   const entry = (mode: Mode, hint: Key) => `
     <li><button class="entry" data-act="mode" data-mode="${mode}">
@@ -141,7 +143,7 @@ function breathControls(p: Prefs): string {
 function chooseBody(app: App, mode: Mode): string {
   const p = app.prefs
   if (mode === 'sleep') {
-    return `<p class="lead">${t('sleepDesc')}</p><p class="tip">${t('sleepTip')}</p>${ambienceChips(p.sleepAmbience)}`
+    return `<p class="lead">${t('sleepDesc')}</p><p class="tip">${t('sleepTip')}</p>`
   }
   const isBreath = mode === 'breathe'
   const ids: string[] = isBreath ? PRESETS : MEDITATIONS
@@ -160,7 +162,7 @@ function chooseBody(app: App, mode: Mode): string {
     : p.meditation === 'timer'
       ? stepper('timer', t('duration'), `${p.timerMinutes} ${t('minutes')}`)
       : ''
-  return `<ul class="options">${options}</ul><div class="controls">${controls}</div>${ambienceChips(p.ambience)}`
+  return `<ul class="options">${options}</ul><div class="controls">${controls}</div>`
 }
 
 function specFor(app: App, mode: Mode): SessionSpec {
@@ -174,9 +176,14 @@ function specFor(app: App, mode: Mode): SessionSpec {
 const clampTo = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v))
 
 export function showChoose(app: App, mode: Mode) {
-  app.land.setSky(mode === 'breathe' ? 'dawn' : mode === 'meditate' ? 'afternoon' : 'night')
+  const sky: Sky = mode === 'breathe' ? 'dawn' : mode === 'meditate' ? 'afternoon' : 'night'
+  const scene = () => app.land.setScene(sky, mode === 'sleep' ? app.prefs.sleepAmbience : app.prefs.ambience)
+  scene()
   const title = mode === 'sleep' ? t('sleepTitle') : t(mode === 'breathe' ? 'breathe' : 'meditate')
-  const footer = `<footer class="sheet-foot"><button class="primary wide" data-act="start">${t('start')}</button></footer>`
+  const footer = `<footer class="sheet-foot">
+    ${ambienceChips(mode === 'sleep' ? app.prefs.sleepAmbience : app.prefs.ambience)}
+    <button class="primary wide" data-act="start">${t('start')}</button>
+  </footer>`
   show(app, sheet(title, chooseBody(app, mode), footer), (el) => {
     const body = el.querySelector<HTMLElement>('.sheet-body')!
     const refresh = () => {
@@ -197,7 +204,9 @@ export function showChoose(app: App, mode: Mode) {
         const a = b.dataset.value as Ambience
         if (mode === 'sleep') p.sleepAmbience = a
         else p.ambience = a
-        refresh()
+        scene()
+        el.querySelectorAll('[data-act=ambience]').forEach((c) => c.setAttribute('aria-pressed', String(c === b)))
+        save(app)
       },
       step: (b) => {
         const d = Number(b.dataset.delta)
@@ -269,7 +278,7 @@ export function showSettings(app: App) {
       <span class="setting-label">${t('ambienceVolume')}</span>
       <input type="range" min="0" max="1" step="0.05" value="${p.ambienceVolume}" data-volume="ambience" />
     </label>
-    ${ambienceChips(p.ambience).replace(t('ambience'), t('defaultAmbience'))}
+    ${ambienceChips(p.ambience, t('defaultAmbience'))}
     <button class="link" data-act="warning">${t('rereadWarning')}</button>`
 
   show(app, sheet(t('settings'), render()), (el) => {
@@ -284,6 +293,7 @@ export function showSettings(app: App) {
       },
       ambience: (b) => {
         p.ambience = b.dataset.value as Ambience
+        app.land.setScene(homeSky(), p.ambience)
         save(app)
         body.innerHTML = render()
       },
